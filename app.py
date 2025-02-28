@@ -1,90 +1,97 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
 
-st.title("Housing Price Prediction App")
+# ---------------------------
+# 1. Data Loading and Preprocessing
+# ---------------------------
 
-# -----------------------------
-# Data Loading and Validation
-# -----------------------------
-try:
-    # Read the dataset from the local file in the GitHub repository
-    df = pd.read_excel('AmesHousing.xlsx')
-except Exception as e:
-    st.error(f"Error loading dataset: {e}")
-    st.stop()
+# Read the dataset from the local file in the GitHub repository
+df = pd.read_excel('AmesHousing.xlsx')
 
-if df.empty:
-    st.error("The dataset is empty. Please check the file path and file contents.")
-    st.stop()
+# For this example, we select a few key numerical features.
+# You can adjust the feature list based on your dataset.
+features = ["OverallQual", "GrLivArea", "YearBuilt", "TotalBsmtSF", "GarageCars"]
+target = "SalePrice"
 
-# -----------------------------
-# Data Imputation (Handling Missing Values)
-# -----------------------------
-# Identify numeric columns and fill missing values with the mean
-numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
-df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
-
-# Optionally, if there are non-numeric columns you care about,
-# you might fill missing values with a default value or mode.
-# For now, we assume the features used for prediction are numeric.
-
-# -----------------------------
-# Data Preprocessing and Splitting
-# -----------------------------
-# Define the features and target variable
-features = ['OverallQual', 'GrLivArea', 'GarageCars', 'TotalBsmtSF', 'FullBath', 'YearBuilt', 'LotArea']
-target = 'SalePrice'
-
-# Ensure that the expected features exist in the dataset
-features = [col for col in features if col in df.columns]
-if not features:
-    st.error("None of the specified features were found in the dataset.")
-    st.stop()
+# Drop rows with missing values in selected features/target
+df = df.dropna(subset=features + [target])
 
 X = df[features]
 y = df[target]
 
-if X.shape[0] < 2:
-    st.error("Not enough data to split into train and test sets.")
-    st.stop()
+# ---------------------------
+# 2. Splitting the Data and Training the Model
+# ---------------------------
 
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Split the data into training and testing sets (80% train, 20% test)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
 
-# -----------------------------
-# Train the Regression Model
-# -----------------------------
+# Train a regression model (using Linear Regression in this example)
 model = LinearRegression()
 model.fit(X_train, y_train)
 
-# -----------------------------
-# Streamlit Web App Interface
-# -----------------------------
-st.write("""
-This app predicts the **Housing Price** based on user inputs.
-Use the sidebar to adjust parameters and view the predicted sale price.
-""")
+# Evaluate model performance on the test set (optional)
+y_pred = model.predict(X_test)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
 
-st.sidebar.header('User Input Parameters')
+# ---------------------------
+# 3. Streamlit Web Application
+# ---------------------------
 
-def user_input_features():
-    input_data = {}
-    for feature in features:
-        min_val = int(X[feature].min())
-        max_val = int(X[feature].max())
-        mean_val = int(X[feature].mean())
-        input_data[feature] = st.sidebar.slider(feature, min_val, max_val, mean_val)
-    return pd.DataFrame(input_data, index=[0])
+st.title("Ames Housing Price Prediction")
+st.write("This app predicts the sale price of a house based on selected features.")
 
-input_df = user_input_features()
+st.subheader("Model Performance on Test Set")
+st.write(f"**Mean Squared Error:** {mse:.2f}")
+st.write(f"**R² Score:** {r2:.2f}")
 
-st.subheader('User Input Parameters')
-st.write(input_df)
+st.subheader("Enter House Details:")
 
-# Predict the housing price based on the input
-prediction = model.predict(input_df)
+# Create input widgets for the selected features.
+overall_qual = st.slider(
+    "Overall Quality", 
+    int(X["OverallQual"].min()), 
+    int(X["OverallQual"].max()), 
+    int(X["OverallQual"].median())
+)
+gr_liv_area = st.number_input(
+    "Above Ground Living Area (sq ft)", 
+    float(X["GrLivArea"].min()), 
+    float(X["GrLivArea"].max()), 
+    float(X["GrLivArea"].median())
+)
+year_built = st.number_input(
+    "Year Built", 
+    int(X["YearBuilt"].min()), 
+    int(X["YearBuilt"].max()), 
+    int(X["YearBuilt"].median())
+)
+total_bsmt_sf = st.number_input(
+    "Total Basement Area (sq ft)", 
+    float(X["TotalBsmtSF"].min()), 
+    float(X["TotalBsmtSF"].max()), 
+    float(X["TotalBsmtSF"].median())
+)
+garage_cars = st.slider(
+    "Number of Cars in Garage", 
+    int(X["GarageCars"].min()), 
+    int(X["GarageCars"].max()), 
+    int(X["GarageCars"].median())
+)
 
-st.subheader('Predicted Sale Price')
-st.write(f"${prediction[0]:,.2f}")
+# When the user clicks the "Predict" button, use the trained model to predict SalePrice.
+if st.button("Predict Sale Price"):
+    # Prepare the input data as a 2D numpy array
+    input_data = np.array([[overall_qual, gr_liv_area, year_built, total_bsmt_sf, garage_cars]])
+    
+    # Make a prediction
+    prediction = model.predict(input_data)
+    
+    st.success(f"Predicted Sale Price: ${prediction[0]:,.2f}")
