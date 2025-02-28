@@ -1,44 +1,59 @@
+import streamlit as st
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 
-# 1. Load the dataset
+def load_data():
 # Read the dataset from the local file in the GitHub repository
-df = pd.read_excel('AmesHousing.xlsx')
+    df = pd.read_excel('AmesHousing.xlsx')
+    return data
+except Exception as e:
+    st.error(f"Error loading data: {e}")
+        return None
 
-# 2. Preprocess the data
-# For simplicity, we drop rows with missing values.
-# In practice, you might want to fill missing values or handle them differently.
-data.dropna(inplace=True)
+def main():
+    st.title("Housing Price Prediction")
+    
+    # Load data
+    data = load_data()
+    if data is None:
+        return  # Stop if data loading fails
 
-# Assuming that the target variable is 'Price' and the rest are features
-X = data.drop('Price', axis=1)
-y = data['Price']
+    st.write("Dataset Preview:")
+    st.dataframe(data.head())
 
-# Optional: If there are categorical features, you would need to encode them.
-# For example:
-# X = pd.get_dummies(X)
+    # Preprocess the data
+    data.dropna(inplace=True)  # Remove missing values
+    if 'Price' not in data.columns:
+        st.error("The dataset does not contain a 'Price' column.")
+        return
+    
+    X = data.drop('Price', axis=1)
+    y = data['Price']
 
-# 3. Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# 4. Scale the feature data
-# Scaling can help many models converge faster and achieve better performance.
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+    # Scale the features
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-# 5. Train a regression model (using Linear Regression as an example)
-model = LinearRegression()
-model.fit(X_train_scaled, y_train)
+    # Train a regression model (Linear Regression)
+    model = LinearRegression()
+    model.fit(X_train_scaled, y_train)
 
-# 6. Make predictions on the test set
-y_pred = model.predict(X_test_scaled)
+    # Make predictions on the test set
+    y_pred = model.predict(X_test_scaled)
 
-# 7. Evaluate the model performance
-mse = mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
-print("Mean Squared Error:", mse)
-print("R2 Score:", r2)
+    # Evaluate the model
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    
+    st.write("Mean Squared Error:", mse)
+    st.write("R2 Score:", r2)
+
+if __name__ == "__main__":
+    main()
