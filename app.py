@@ -2,78 +2,70 @@ import streamlit as st
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, r2_score
 
-def main():
-    st.title("Housing Price Prediction App")
-    st.write("This app predicts housing prices using the Ames Housing dataset.")
+# -----------------------------
+# Data Loading and Preprocessing
+# -----------------------------
 
-    # Read the dataset from the local file in the GitHub repository
-    try:
-        df = pd.read_excel('AmesHousing.xlsx')
-    except Exception as e:
-        st.error(f"Error reading file: {e}")
-        return
+# Read the dataset from the local file in the GitHub repository
+df = pd.read_excel('AmesHousing.xlsx')
 
-    st.subheader("Dataset Preview")
-    st.write(df.head())
+# For simplicity, drop rows with missing values
+df = df.dropna()
 
-    # Data Preprocessing: Drop missing values (or consider imputing missing values)
-    df_clean = df.dropna()
-    if df_clean.empty:
-        st.error("The dataset is empty after dropping missing values. Consider using a different strategy (e.g., imputing missing values) or check the data file.")
-        return
-    st.write("Data after dropping missing values:")
-    st.write(df_clean.head())
+# Define the features and the target variable
+# (Ensure that these columns exist in your dataset)
+features = ['OverallQual', 'GrLivArea', 'GarageCars', 'TotalBsmtSF', 'FullBath', 'YearBuilt', 'LotArea']
+target = 'SalePrice'
 
-    # Ensure the target column exists
-    if 'SalePrice' not in df_clean.columns:
-        st.error("The dataset must contain a 'SalePrice' column.")
-        return
+# If needed, adjust the features list to match the available columns in your dataset
+features = [col for col in features if col in df.columns]
 
-    # Define features and target
-    X = df_clean.drop('SalePrice', axis=1)
-    y = df_clean['SalePrice']
+# Split the dataset into feature matrix X and target vector y
+X = df[features]
+y = df[target]
 
-    # Convert categorical columns to numeric using one-hot encoding
-    X = pd.get_dummies(X, drop_first=True)
-    if X.empty:
-        st.error("No features available after preprocessing. Please check the preprocessing steps.")
-        return
-    st.write("Features after encoding:")
-    st.write(X.head())
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Train-Test Split
-    st.header("Train-Test Split")
-    test_size = st.slider("Select test set fraction", 0.1, 0.5, 0.2, step=0.05)
-    
-    # Check if there is enough data to perform a split
-    if len(X) < 2:
-        st.error("Not enough data to split into training and testing sets.")
-        return
+# Train a regression model (using Linear Regression here)
+model = LinearRegression()
+model.fit(X_train, y_train)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
-    st.write(f"Training samples: {X_train.shape[0]}")
-    st.write(f"Testing samples: {X_test.shape[0]}")
+# -----------------------------
+# Streamlit Web App
+# -----------------------------
 
-    # Model Training
-    st.header("Model Training")
-    model = LinearRegression()
-    model.fit(X_train, y_train)
-    st.write("Model training complete.")
+st.title('Housing Price Prediction App')
+st.write("""
+This app predicts the **Housing Price** based on user input parameters.
+Adjust the values in the sidebar and see the predicted sale price.
+""")
 
-    # Model Evaluation
-    st.header("Model Evaluation")
-    y_pred = model.predict(X_test)
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-    st.write("Mean Squared Error (MSE):", mse)
-    st.write("R² Score:", r2)
+# Sidebar for user input parameters
+st.sidebar.header('User Input Parameters')
 
-    # Display a sample of actual vs. predicted values
-    st.subheader("Actual vs. Predicted Prices")
-    results = pd.DataFrame({'Actual': y_test, 'Predicted': y_pred})
-    st.write(results.head())
+def user_input_features():
+    input_data = {}
+    # Create a slider for each feature using its min, max, and mean values
+    for feature in features:
+        min_val = int(X[feature].min())
+        max_val = int(X[feature].max())
+        mean_val = int(X[feature].mean())
+        input_data[feature] = st.sidebar.slider(feature, min_val, max_val, mean_val)
+    # Convert the user input to a DataFrame
+    input_df = pd.DataFrame(input_data, index=[0])
+    return input_df
 
-if __name__ == '__main__':
-    main()
+input_df = user_input_features()
+
+# Display the user input parameters
+st.subheader('User Input Parameters')
+st.write(input_df)
+
+# Predict housing price using the trained model
+prediction = model.predict(input_df)
+
+# Display the prediction
+st.subheader('Predicted Sale Price')
+st.write(f"${prediction[0]:,.2f}")
