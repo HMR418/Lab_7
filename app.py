@@ -21,8 +21,23 @@ df.columns = df.columns.str.strip()
 # Debug: Display cleaned column names
 st.write("Cleaned Dataset Columns:", df.columns.tolist())
 
+# If your dataset uses different column names, you can rename them using a mapping.
+# For example, many Ames Housing datasets use names like "Overall Qual" instead of "OverallQual".
+column_mapping = {
+    "Overall Qual": "OverallQual",
+    "Gr Liv Area": "GrLivArea",
+    "Year Built": "YearBuilt",
+    "Total Bsmt SF": "TotalBsmtSF",
+    "Garage Cars": "GarageCars"
+}
+
+# Rename columns if they exist in the DataFrame
+df.rename(columns=column_mapping, inplace=True)
+
+# Debug: Display renamed columns
+st.write("Renamed Dataset Columns:", df.columns.tolist())
+
 # Define the expected features and target column name.
-# Adjust these names if your dataset uses different naming conventions.
 features = ["OverallQual", "GrLivArea", "YearBuilt", "TotalBsmtSF", "GarageCars"]
 target = "SalePrice"
 
@@ -43,12 +58,12 @@ y = df[target]
 # 2. Splitting the Data and Training the Model
 # ---------------------------
 
-# Split the data (80% training, 20% testing)
+# Split the data into training and testing sets (80% training, 20% testing)
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 
-# Train a Linear Regression model
+# Train a regression model (using Linear Regression)
 model = LinearRegression()
 model.fit(X_train, y_train)
 
@@ -70,7 +85,7 @@ st.write(f"**R² Score:** {r2:.2f}")
 
 st.subheader("Enter House Details:")
 
-# Input widgets for each feature
+# Create input widgets for each feature using the training data statistics.
 overall_qual = st.slider(
     "Overall Quality",
     int(X["OverallQual"].min()),
@@ -102,9 +117,8 @@ garage_cars = st.slider(
     int(X["GarageCars"].median())
 )
 
-# When the user clicks the "Predict" button, predict the sale price using the trained model.
+# Predict the sale price when the button is clicked.
 if st.button("Predict Sale Price"):
-    # Prepare the input data as a 2D numpy array
     input_data = np.array([[overall_qual, gr_liv_area, year_built, total_bsmt_sf, garage_cars]])
     prediction = model.predict(input_data)
     st.success(f"Predicted Sale Price: ${prediction[0]:,.2f}")
