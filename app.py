@@ -20,20 +20,24 @@ if df.empty:
     st.stop()
 
 # -----------------------------
-# Data Preprocessing
+# Data Imputation (Handling Missing Values)
 # -----------------------------
-# Drop rows with missing values (you can adjust this logic as needed)
-df = df.dropna()
+# Identify numeric columns and fill missing values with the mean
+numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
+df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
 
-if df.empty:
-    st.error("After dropping missing values, no data remains. Adjust your missing value handling.")
-    st.stop()
+# Optionally, if there are non-numeric columns you care about,
+# you might fill missing values with a default value or mode.
+# For now, we assume the features used for prediction are numeric.
 
+# -----------------------------
+# Data Preprocessing and Splitting
+# -----------------------------
 # Define the features and target variable
 features = ['OverallQual', 'GrLivArea', 'GarageCars', 'TotalBsmtSF', 'FullBath', 'YearBuilt', 'LotArea']
 target = 'SalePrice'
 
-# Ensure that the expected features are present in the DataFrame
+# Ensure that the expected features exist in the dataset
 features = [col for col in features if col in df.columns]
 if not features:
     st.error("None of the specified features were found in the dataset.")
